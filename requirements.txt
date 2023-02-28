@@ -1,0 +1,11 @@
+
+pytorch_lightning
+sentencepiece
+safetensors
+OmegaConf
+pytorch
+einops 
+kornia
+numpy
+clip
+lark
