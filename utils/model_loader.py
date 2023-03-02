@@ -1,6 +1,6 @@
 from ldm.util import instantiate_from_config
 from omegaconf import OmegaConf
-import os
+import os, torch
 
 # Create model from config file
 def create_model(config_path: str):
