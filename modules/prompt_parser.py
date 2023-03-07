@@ -186,12 +186,16 @@ class ComposableScheduledPromptConditioning:
     def __init__(self, schedules, weight=1.0):
         self.schedules: List[ScheduledPromptConditioning] = schedules
         self.weight: float = weight
+    def __str__(self):
+        return f"schedules: {self.schedules}, weight: {self.weight}"
 
 
 class MulticondLearnedConditioning:
     def __init__(self, shape, batch):
         self.shape: tuple = shape  # the shape field is needed to send this object to DDIM/PLMS
         self.batch: List[List[ComposableScheduledPromptConditioning]] = batch
+    def __str__(self):
+        return f"shape: {self.shape}, batch: {self.batch}"
 
 def get_multicond_learned_conditioning(model, prompts, steps) -> MulticondLearnedConditioning:
     """same as get_learned_conditioning, but returns a list of ScheduledPromptConditioning along with the weight objects for each prompt.

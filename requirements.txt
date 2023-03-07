@@ -1,6 +1,7 @@
 
 pytorch_lightning
 sentencepiece
+transformers
 safetensors
 OmegaConf
 pytorch
@@ -9,3 +10,4 @@ kornia
 numpy
 clip
 lark
+PIL
