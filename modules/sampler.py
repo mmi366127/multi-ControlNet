@@ -1,6 +1,6 @@
 
 from ldm.models.diffusion.ddim import DDIMSampler
-from modules import prompt_parser
+from utils import prompt_parser
 import numpy as np
 
 class VanillaStableDiffusionSampler(object):

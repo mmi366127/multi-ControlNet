@@ -3,6 +3,8 @@ bin/
 *.png
 dataset/
 image/
+/image_log
+/lightning_logs
 .vscode/
 
 # Created by https://www.toptal.com/developers/gitignore/api/c,c++,cuda,python,linux,macos,windows
