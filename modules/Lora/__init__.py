@@ -56,7 +56,7 @@ class LoRAModule(pl.LightningModule):
     def apply_to(self):
         # apply lora to original module
         self.org_forward = self.org_module.forward
-        self.org_modlue.forward = self.org_forward
+        self.org_module.forward = self.org_forward
     
     
     def forward(self, x):
@@ -64,7 +64,7 @@ class LoRAModule(pl.LightningModule):
     
       
 class LoRANetwork(pl.LightningModule):
-    UNET_TARGET_REPLACE_MODULE = ["Transformer2DModel", "Attention"]
+    UNET_TARGET_REPLACE_MODULE = ["SpatialTransformer"]
     TEXT_ENCODER_TARGET_REPLACE_MODULE = ["CLIPAttention", "CLIPMLP"]
     LORA_PREFIX_UNET = 'lora_unet'
     LORA_PREFIX_TEXT_ENCODER = 'lora_te'
@@ -123,7 +123,7 @@ class LoRANetwork(pl.LightningModule):
         else:
             self.weights_sd = torch.load(file, map_location='cpu')
             
-    def apply_to(self, text_encoder, unet, apply_text_encoder=None, apply_unet=None):
+    def apply_to(self, apply_text_encoder=None, apply_unet=None):
         if self.weights_sd:
             weights_has_text_encoder = weights_has_unet = False
             for key in self.weights_sd.keys():
@@ -191,10 +191,10 @@ class LoRANetwork(pl.LightningModule):
 
         return all_params
 
-    def prepare_grad_etc(self, text_encoder, unet):
+    def prepare_grad_etc(self):
         self.requires_grad_(True)
 
-    def on_epoch_start(self, text_encoder, unet):
+    def on_train_epoch_start(self):
         self.train()
 
     def get_trainable_params(self):
