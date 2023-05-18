@@ -74,7 +74,6 @@ class VanillaStableDiffusionSampler(object):
         self.mask = mask
         self.nmask = nmask
 
-
     def sample(self, x, 
                      conditioning, 
                      unconditional_conditioning, 

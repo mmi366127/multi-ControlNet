@@ -62,7 +62,94 @@ class LoRAModule(pl.LightningModule):
     def forward(self, x):
         return self.org_forward(x) + self.lora_up(self.lora_down(x)) * self.multiplier * self.scale    
     
-      
+
+
+class LoRA(pl.LightningModule):
+    UNET_TARGET_REPLACE_MODULE = ["SpatialTransformer"]
+    TEXT_ENCODER_TARGET_REPLACE_MODULE = ["CLIPAttention", "CLIPMLP"]
+    LORA_PREFIX_UNET = 'lora_unet'
+    LORA_PREFIX_TEXT_ENCODER = 'lora_te'
+
+    def __init__(self, text_encoder, unet, multiplier, lora_dim, alpha):
+        super().__init__()
+        
+        self.multiplier = multiplier
+        self.lora_dim = lora_dim
+        self.alpha = alpha
+
+        # create module instances
+        def create_modules(prefix, root_module: torch.nn.Module, target_replace_modules) -> List[LoRAModule]:
+            loras = []
+            for name, module in root_module.named_modules():
+                    if module.__class__.__name__ in target_replace_modules:
+                        for child_name, child_module in module.named_modules():
+                            if child_module.__class__.__name__ == "Linear" or (child_module.__class__.__name__ == "Conv2d" and child_module.kernel_size == (1, 1)):
+                                lora_name = prefix + '.' + name + '.' + child_name
+                                lora_name = lora_name.replace('.', '_')
+                                lora = LoRAModule(lora_name, child_module, self.multiplier, self.lora_dim, self.alpha)
+                                loras.append(lora)
+            return loras
+
+
+        if text_encoder is not None:
+            self.text_encoder_loras = create_modules(LoRANetwork.LORA_PREFIX_TEXT_ENCODER, text_encoder, LoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE)            
+            print(f"create LoRA for Text Encoder: {len(self.text_encoder_loras)} modules.")
+        else:
+            self.text_encoder_loras = []
+
+
+        if unet is not None:
+            self.unet_loras = create_modules(LoRANetwork.LORA_PREFIX_UNET, unet, LoRANetwork.UNET_TARGET_REPLACE_MODULE)
+            print(f"create LoRA for U-Net: {len(self.unet_loras)} modules.")
+        else:
+            self.unet_loras = []
+
+
+        # assertion
+        names = set()
+        for lora in self.text_encoder_loras + self.unet_loras:
+            assert lora.lora_name not in names, f"duplicated lora name: {lora.lora_name}"
+            names.add(lora.lora_name)
+
+        # add module to Lora
+        for lora_module in self.text_encoder_loras + self.unet_loras:
+            lora_module.apply_to()
+            self.add_module(lora_module.lora_name, lora_module)
+
+    def set_multiplier(self, multiplier):
+        self.multiplier = multiplier
+        for lora in self.text_encoder_loras + self.unet_loras:
+            lora.multiplier = self.multiplier
+
+    def get_trainable_params(self):
+        def enumerate_params(loras):
+            params = []
+            for lora in loras:
+                params.extend(lora.lora_up.parameters())
+                params.extend(lora.lora_down.parameters())
+            return params
+
+        all_params = []
+
+        if len(self.text_encoder_loras) > 0:
+            param_data = {'params': enumerate_params(self.text_encoder_loras)}
+            all_params.append(param_data)
+
+        if len(self.unet_loras) > 0:
+            param_data = {'params': enumerate_params(self.unet_loras)}
+            all_params.append(param_data)
+
+        return all_params
+
+    def load_module(self):
+        for lora in self.unet_loras + self.text_encoder_loras:
+            lora.apply_to()
+
+    def unload_module(self):
+        for lora in self.unet_loras + self.text_encoder_loras:
+            lora.unload()
+
+    
 class LoRANetwork(pl.LightningModule):
     UNET_TARGET_REPLACE_MODULE = ["SpatialTransformer"]
     TEXT_ENCODER_TARGET_REPLACE_MODULE = ["CLIPAttention", "CLIPMLP"]
@@ -88,7 +175,6 @@ class LoRANetwork(pl.LightningModule):
                                 loras.append(lora)
             return loras
 
-        names = set()
 
         if text_encoder is not None:
             self.text_encoder_loras = create_modules(LoRANetwork.LORA_PREFIX_TEXT_ENCODER, text_encoder, LoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE)            
@@ -171,7 +257,8 @@ class LoRANetwork(pl.LightningModule):
         def enumerate_params(loras):
             params = []
             for lora in loras:
-                params.extend(lora.parameters())
+                params.extend(lora.lora_up.parameters())
+                params.extend(lora.lora_down.parameters())
             return params
 
         self.requires_grad_(True)
@@ -196,9 +283,6 @@ class LoRANetwork(pl.LightningModule):
 
     def on_train_epoch_start(self):
         self.train()
-
-    def get_trainable_params(self):
-        return self.parameters()
 
     def save_weights(self, file, dtype, metadata):
         if metadata is not None and len(metadata) == 0:

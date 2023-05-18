@@ -136,17 +136,17 @@ class MultiControlLDM(LatentDiffusion):
     def log_images(self, batch, N=4, n_row=2, sample=False, ddim_steps=25, ddim_eta=0.0, return_keys=None,
                    quantize_denoised=True, inpaint=True, plot_denoise_rows=False, plot_progressive_rows=True,
                    plot_diffusion_rows=False, unconditional_guidance_scale=7.0, unconditional_guidance_label=None,
-                   use_ema_scope=True,
+                   use_ema_scope=True, size=512,
                    **kwargs):
         use_ddim = ddim_steps is not None
 
         log = dict()
-
+        
         z, c = self.get_input(batch, self.first_stage_key, bs=N)
         N = min(z.shape[0], N)
         n_row = min(z.shape[0], n_row)
         log["reconstruction"] = self.decode_first_stage(z)
-        log["conditioning"] = log_txt_as_img((512, 512), batch[self.cond_stage_key], size=16)
+        log["conditioning"] = log_txt_as_img((size, size), batch[self.cond_stage_key], size=16)
 
         if plot_diffusion_rows:
             # get diffusion row
@@ -185,7 +185,7 @@ class MultiControlLDM(LatentDiffusion):
                                              batch_size=N, ddim=use_ddim,
                                              ddim_steps=ddim_steps, eta=ddim_eta,
                                              unconditional_guidance_scale=unconditional_guidance_scale,
-                                             unconditional_conditioning=uc_full,
+                                             unconditional_conditioning=uc_full, size=size
                                              )
             x_samples_cfg = self.decode_first_stage(samples_cfg)
             log[f"samples_cfg_scale_{unconditional_guidance_scale:.2f}"] = x_samples_cfg
@@ -193,9 +193,9 @@ class MultiControlLDM(LatentDiffusion):
         return log
 
     @torch.no_grad()
-    def sample_log(self, cond, batch_size, ddim, ddim_steps, **kwargs):
+    def sample_log(self, cond, batch_size, ddim, ddim_steps, size=512, **kwargs):
         ddim_sampler = DDIMSampler(self)
-        shape = (self.channels, 512 // 8, 512 // 8)
+        shape = (self.channels, size // 8, size // 8)
         samples, intermediates = ddim_sampler.sample(ddim_steps, batch_size, shape, cond, verbose=False, **kwargs)
         return samples, intermediates
 

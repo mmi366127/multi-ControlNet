@@ -30,7 +30,7 @@ class Ensemble(pl.LightningModule):
         self.model.sd_locked = sd_locked
         self.model.only_mid_control = only_mid_control
 
-    def prepare_grad_etc(sefl):
+    def prepare_grad_etc(self):
         self.lora.requires_grad_(True)
         self.model.control_model.requires_grad_(True)
         self.model.model.requires_grad_(True)
@@ -75,7 +75,8 @@ def main(hparams):
 
     # weight for unet, encoder, decoder, text embedding 
     main_ckpt_path = hparams.unet_path
-    main_ckpt_path = '../stable-diffusion-webui/models/Stable-diffusion/pastelMixStylizedAnime_pastelMixFull.safetensors'
+    # main_ckpt_path = '../stable-diffusion-webui/models/Stable-diffusion/pastelMixStylizedAnime_pastelMixFull.safetensors'
+    main_ckpt_path = '../stable-diffusion-webui/models/Stable-diffusion/CounterfeitV30_v30.safetensors'
 
     # weight for control net 
     ctrl_pose_path = hparams.ctrl_path
@@ -143,6 +144,7 @@ def get_opts():
     parser.add_argument("--root_dir", type=str,
                         default="/home/lolicon/data/dataset/lycoris",
                         help="root directory of dataset.")
+
 
     parser.add_argument("--precision", type=str, default="16",
                         help="The precision of training.")
