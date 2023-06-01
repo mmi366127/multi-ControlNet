@@ -1,9 +1,10 @@
 
 from pytorch_lightning.callbacks import ModelCheckpoint
 from cldm.model import create_model, load_state_dict
+from lightning.pytorch.utilities import grad_norm
 from cldm.ddim_hacked import DDIMSampler
 from torch.utils.data import DataLoader
-from data.dataset import CustomDataset
+from data import CustomDataset
 from cldm.logger import ImageLogger
 import pytorch_lightning as pl
 from pathlib import Path
@@ -14,11 +15,10 @@ from modules.Lora import LoRANetwork
 
 class Ensemble(pl.LightningModule):
 
-    def __init__(self, model, lora, learning_rate=1e-5, sd_locked=True, only_mid_control=False, *args, **kwargs):
+    def __init__(self, model, lora, learning_rate=1e-6, sd_locked=True, only_mid_control=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        lora.apply_to(apply_unet=True, apply_text_encoder=False)
-
+    
         self.model = model
         self.lora = lora
 
@@ -46,6 +46,13 @@ class Ensemble(pl.LightningModule):
         params = self.prepare_optimizer_params()
         opt = torch.optim.AdamW(params, lr=lr)
         return opt
+
+    # for debug
+    def on_before_optimizer_step(self, optimizer, _):
+        # Compute the 2-norm for each layer
+        # If using mixed precision, the gradients are already unscaled here
+        lora_grad = grad_norm(self.lora, norm_type=2)
+        self.log_dict(lora_grad)
 
     def training_step(self, batch, batch_idx):
         return self.model.training_step(batch, batch_idx)
@@ -89,12 +96,14 @@ def main(hparams):
 
     # lora network
     lora_network = LoRANetwork(unet=model.control_model.pose_model, lora_dim=hparams.lora_dim, alpha=hparams.lora_alpha)
+    lora_network.apply_to(apply_unet=True, apply_text_encoder=False)
+
 
     # Ensemble model
     Ensemble_model = Ensemble(model, lora_network, hparams.lr, hparams.sd_locked, hparams.only_mid_control)
 
     # dataset
-    dataset = CustomDataset(root_dir)
+    dataset = CustomDataset(root_dir, seperate_prompt=False)
     dataloader = DataLoader(dataset, num_workers=8, batch_size=hparams.batch_size, shuffle=True)
 
 
@@ -105,7 +114,7 @@ def main(hparams):
                               filename='{epoch:d}',
                               monitor='train/loss',
                               mode='min',
-                              every_n_epochs=100,
+                              every_n_train_steps=1000,
                               save_top_k=3)
     
     logger = myLogger(batch_frequency=hparams.logger_freq)
@@ -130,7 +139,7 @@ def main(hparams):
 def get_opts():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--lora_dim", type=int, default=8,
+    parser.add_argument("--lora_dim", type=int, default=64,
                         help="The lora dimension.")
     parser.add_argument("--lora_alpha", type=float, default=4.0,
                         help="The lora alpha")
@@ -142,11 +151,11 @@ def get_opts():
                         help="Whether to lock the unet.")
 
     parser.add_argument("--root_dir", type=str,
-                        default="/home/lolicon/data/dataset/lycoris",
+                        default="/home/lolicon/workspace/dataset/Illya",
                         help="root directory of dataset.")
 
 
-    parser.add_argument("--precision", type=str, default="16",
+    parser.add_argument("--precision", type=str, default="32",
                         help="The precision of training.")
 
     parser.add_argument("--batch_size", type=int, default=2,
@@ -170,7 +179,7 @@ def get_opts():
     parser.add_argument("--logger_freq", type=int, default=2000,
                         help="the frequency to log image.")
 
-    parser.add_argument('--lr', type=float, default=1e-5,
+    parser.add_argument('--lr', type=float, default=1e-6,
                         help='learning rate')
 
     # not used yet 

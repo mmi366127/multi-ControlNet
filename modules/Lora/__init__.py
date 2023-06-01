@@ -50,13 +50,15 @@ class LoRAModule(pl.LightningModule):
     
     def unload(self):
         # unload lora module for original module
+        print(f'unhook lora module for {self.lora_name}')
         self.org_module.forward = self.org_forward
         
     
     def apply_to(self):
         # apply lora to original module
+        print(f'hook lora module for {self.lora_name}')
         self.org_forward = self.org_module.forward
-        self.org_module.forward = self.org_forward
+        self.org_module.forward = self.forward
     
     
     def forward(self, x):
@@ -125,20 +127,18 @@ class LoRA(pl.LightningModule):
         def enumerate_params(loras):
             params = []
             for lora in loras:
-                params.extend(lora.lora_up.parameters())
-                params.extend(lora.lora_down.parameters())
+                params.extend(list(lora.lora_up.parameters()))
+                params.extend(list(lora.lora_down.parameters()))
             return params
 
         all_params = []
 
         if len(self.text_encoder_loras) > 0:
-            param_data = {'params': enumerate_params(self.text_encoder_loras)}
-            all_params.append(param_data)
+            all_params.extend(enumerate_params(self.text_encoder_loras))
 
         if len(self.unet_loras) > 0:
-            param_data = {'params': enumerate_params(self.unet_loras)}
-            all_params.append(param_data)
-
+            all_params.extend(enumerate_params(self.unet_loras))
+            
         return all_params
 
     def load_module(self):

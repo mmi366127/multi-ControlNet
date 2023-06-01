@@ -73,7 +73,7 @@ class DataModuleFromConfig(pl.LightningDataModule):
                             num_workers=self.num_workers, shuffle=True)
         else:
             train_set = self.datasets["train"]
-            return DataLoader(concat_dataset, batch_size=self.batch_size,
+            return DataLoader(train_set, batch_size=self.batch_size,
                             num_workers=self.num_workers, shuffle=True)
 
     def _val_dataloader(self, shuffle=False):
@@ -95,11 +95,12 @@ class CustomDataset(Dataset):
     def __init__(self, 
                 data_path, 
                 size=512, 
-                repeats=100,
+                repeats=10,
                 interpolation="bicubic",
                 flip_p=0.5,
                 set="train",
-                center_crop=False):
+                center_crop=False,
+                seperate_prompt=True):
         
         self.dir =  Path(data_path)
         self.data = []
@@ -121,6 +122,7 @@ class CustomDataset(Dataset):
             "lanczos": cv2.INTER_LANCZOS4
         }[interpolation]
 
+        self.seperate_prompt = seperate_prompt
         self.flip_p = flip_p
         self.size = size
 
@@ -180,7 +182,7 @@ class CustomDataset(Dataset):
             else:
                 # text info
                 text = value
-                if key != self.text_keys[0]:
+                if key != self.text_keys[0] and self.seperate_prompt:
                     text = ', '.join([info[self.text_keys[0]], value])
                 ret[key] = text
         
@@ -203,6 +205,7 @@ class DreamBoothDataset(CustomDataset):
 
         ret = {}
         for key, value in info.items():
+            if '2' in key : continue
             if key in self.image_keys:
                 # image path
                 source = cv2.imread(str(self.dir / value))

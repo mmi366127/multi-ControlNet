@@ -1,14 +1,8 @@
 model:
   base_learning_rate: 1.0e-06
-  target: modules.multiControlNet.trainer.LoraEnsemble
+  target: modules.multiControlNet.trainer.DreamBooth
   params:
-
-    # lora info
-    lora_multiplier: 1.0
-    lora_dim: 64
-    lora_alpha: 4.0
-
-
+    reg_weight: 1.0
     linear_start: 0.00085
     linear_end: 0.0120
     num_timesteps_cond: 1
@@ -20,7 +14,7 @@ model:
     channels: 4
     cond_stage_trainable: false
     conditioning_key: crossattn
-    monitor: train/loss
+    monitor: val/loss
     scale_factor: 0.18215
     use_ema: False
     only_mid_control: False
@@ -102,22 +96,36 @@ model:
 data:
   target: data.DataModuleFromConfig
   params:
-    batch_size: 1
+    batch_size: 2
     num_workers: 8
     wrap: false
     train:
-      target: data.CustomDataset
+      target: data.DreamBoothDataset
       params:
-        data_path: /home/lolicon/workspace/dataset/Illya
+        data_path: /home/lolicon/workspace/dataset/lycoris
+        size: 512
+        repeats: 10
+    reg:
+      target: data.DreamBoothDataset
+      params:
+        data_path: /home/lolicon/workspace/dataset/random
+        class_keyword: girl
         size: 512
         set: train
+        reg: true
         repeats: 10
-        seperate_prompt: False
+        
+    validation:
+      target: data.DreamBoothDataset
+      params:
+        data_path: /home/lolicon/workspace/dataset/lycoris
+        size: 512
+        repeats: 1
 
 lightning:
   modelcheckpoint:
     params:
-      every_n_train_steps: 500
+      every_n_train_steps: 2000
   callbacks:
     image_logger:
       target: utils.callbacks.ImageLogger
@@ -128,4 +136,4 @@ lightning:
 
   trainer:
     benchmark: True
-    max_steps: 80000
+    max_steps: 50000

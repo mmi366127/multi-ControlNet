@@ -1,4 +1,5 @@
 model:
+  base_learning_rate: 1.0e-06
   target: modules.multiControlNet.MultiControlLDM
   params:
     linear_start: 0.00085
@@ -12,7 +13,7 @@ model:
     channels: 4
     cond_stage_trainable: false
     conditioning_key: crossattn
-    monitor: val/loss_simple_ema
+    monitor: train/loss
     scale_factor: 0.18215
     use_ema: False
     only_mid_control: False
@@ -21,23 +22,9 @@ model:
       target: modules.multiControlNet.MultiControlNet
       params:
         control_nets:
-          canny_model:
-            target: cldm.cldm.ControlNet
-            params:
-              image_size: 32 # unused
-              in_channels: 4
-              hint_channels: 3
-              model_channels: 320
-              attention_resolutions: [ 4, 2, 1 ]
-              num_res_blocks: 2
-              channel_mult: [ 1, 2, 4, 4 ]
-              num_heads: 8
-              use_spatial_transformer: True
-              transformer_depth: 1
-              context_dim: 768
-              use_checkpoint: True
-              legacy: False
           pose_model:
+            # the path of the pretrained weight
+            weight: ../stable-diffusion-webui/models/ControlNet/control_sd15_openpose.pth
             target: cldm.cldm.ControlNet
             params:
               image_size: 32 # unused
@@ -54,18 +41,14 @@ model:
               use_checkpoint: True
               legacy: False
         cond_keys: # the name of the control and the corresponding model
-          canny_1: canny_model
-          canny_2: canny_model
-          pose: pose_model
+          pose_1: pose_model
+          pose_2: pose_model
         image_control_keys: # the name of the control and the corresponding image condition in batch
-          canny_1: canny_1
-          canny_2: canny_2
-          pose: pose
+          pose_1: pose_1
+          pose_2: pose_2
         text_control_keys: # the name of the control and the corresponding text embedding in batch
-          canny_1: canny_1_text
-          canny_2: canny_2_text
-          pose: pose_text
-
+          pose_1: pose_1_text
+          pose_2: pose_2_text
     unet_config:
       target: cldm.cldm.ControlledUnetModel
       params:
@@ -108,3 +91,43 @@ model:
 
     cond_stage_config:
       target: ldm.modules.encoders.modules.FrozenCLIPEmbedder
+
+data:
+  target: data.DataModuleFromConfig
+  params:
+    batch_size: 2
+    num_workers: 8
+    wrap: false
+
+    train:
+      target: data.MergeDataset
+      params:
+        first_character:
+          target: data.CustomDataset
+          params:
+            data_path: /home/lolicon/workspace/dataset/Illya
+            size: 512
+            set: train
+            repeats: 5
+        second_character:
+          target: data.CustomDataset
+          params:
+            data_path: /home/lolicon/workspace/dataset/takina
+            size: 512
+            set: train
+            repeats: 5
+lightning:
+  modelcheckpoint:
+    params:
+      every_n_train_steps: 500
+  callbacks:
+    image_logger:
+      target: utils.callbacks.ImageLogger
+      params:
+        batch_frequency: 500
+        max_images: 8
+        increase_log_steps: False
+
+  trainer:
+    benchmark: True
+    max_steps: 50000

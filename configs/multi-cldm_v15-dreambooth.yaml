@@ -14,7 +14,7 @@ model:
     channels: 4
     cond_stage_trainable: false
     conditioning_key: crossattn
-    monitor: train/loss
+    monitor: val/loss
     scale_factor: 0.18215
     use_ema: False
     only_mid_control: False
@@ -96,7 +96,7 @@ model:
 data:
   target: data.DataModuleFromConfig
   params:
-    batch_size: 1
+    batch_size: 2
     num_workers: 8
     wrap: false
 
@@ -106,21 +106,21 @@ data:
         first_character:
           target: data.DreamBoothDataset
           params:
-            data_path: /home/lolicon/data/dataset/Illya
+            data_path: /home/lolicon/workspace/dataset/Illya
             size: 512
             set: train
             repeats: 5
         second_character:
           target: data.DreamBoothDataset
           params:
-            data_path: /home/lolicon/data/dataset/takina
+            data_path: /home/lolicon/workspace/dataset/takina
             size: 512
             set: train
             repeats: 5
     reg:
       target: data.DreamBoothDataset
       params:
-        data_path: /home/lolicon/data/dataset/random
+        data_path: /home/lolicon/workspace/dataset/random
         class_keyword: girl
         size: 512
         set: train
@@ -133,22 +133,20 @@ data:
         first_character:
           target: data.DreamBoothDataset
           params:
-            data_path: /home/lolicon/data/dataset/Illya
+            data_path: /home/lolicon/workspace/dataset/Illya
             size: 512
-            set: train
             repeats: 1
         second_character:
           target: data.DreamBoothDataset
           params:
-            data_path: /home/lolicon/data/dataset/takina
+            data_path: /home/lolicon/workspace/dataset/takina
             size: 512
-            set: train
             repeats: 1
 
 lightning:
   modelcheckpoint:
     params:
-      every_n_train_steps: 1000
+      every_n_train_steps: 2000
   callbacks:
     image_logger:
       target: utils.callbacks.ImageLogger

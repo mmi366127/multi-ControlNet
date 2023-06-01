@@ -3,7 +3,7 @@ model:
   target: modules.multiControlNet.trainer.LoraDreamBooth
   params:
     lora_alpha: 1.0
-    lora_dim: 4
+    lora_dim: 128
     reg_weight: 1.0
     linear_start: 0.00085
     linear_end: 0.0120
@@ -16,7 +16,7 @@ model:
     channels: 4
     cond_stage_trainable: false
     conditioning_key: crossattn
-    monitor: train/loss
+    monitor: val/loss
     scale_factor: 0.18215
     use_ema: False
     only_mid_control: False
@@ -101,32 +101,49 @@ data:
     batch_size: 1
     num_workers: 8
     wrap: false
+
     train:
-      target: data.DreamBoothDataset
+      target: data.MergeDataset
       params:
-        data_path: /home/lolicon/data/dataset/lycoris
-        size: 512
-        set: train
-        per_image_tokens: false
-        repeats: 100
+        first_character:
+          target: data.DreamBoothDataset
+          params:
+            data_path: /home/lolicon/workspace/dataset/Illya
+            size: 512
+            set: train
+            repeats: 5
+        second_character:
+          target: data.DreamBoothDataset
+          params:
+            data_path: /home/lolicon/workspace/dataset/takina
+            size: 512
+            set: train
+            repeats: 5
     reg:
       target: data.DreamBoothDataset
       params:
-        data_path: /home/lolicon/data/dataset/lycoris
+        data_path: /home/lolicon/workspace/dataset/random
+        class_keyword: girl
         size: 512
         set: train
         reg: true
-        per_image_tokens: false
         repeats: 10
         
     validation:
-      target: data.DreamBoothDataset
+      target: data.MergeDataset
       params:
-        data_path: /home/lolicon/data/dataset/lycoris
-        size: 512
-        set: val
-        per_image_tokens: false
-        repeats: 10
+        first_character:
+          target: data.DreamBoothDataset
+          params:
+            data_path: /home/lolicon/workspace/dataset/Illya
+            size: 512
+            repeats: 1
+        second_character:
+          target: data.DreamBoothDataset
+          params:
+            data_path: /home/lolicon/workspace/dataset/takina
+            size: 512
+            repeats: 1
 
 lightning:
   modelcheckpoint:
@@ -136,10 +153,11 @@ lightning:
     image_logger:
       target: utils.callbacks.ImageLogger
       params:
-        batch_frequency: 500
+        batch_frequency: 100
         max_images: 8
         increase_log_steps: False
 
   trainer:
     benchmark: True
-    max_steps: 800
+    max_steps: 50000
+    accumulate_grad_batches: 4

@@ -48,7 +48,7 @@ def get_opts():
 
     # model config path
     parser.add_argument("--config", type=str,
-                        default="/home/lolicon/data/dataset/lycoris/dreambooth_model.yaml",
+                        default=None,
                         help="The config of the loaded model.")
 
 
@@ -63,7 +63,7 @@ def get_opts():
 
 
     # training arguments
-    parser.add_argument('--lr', type=float, default=2e-6,
+    parser.add_argument('--lr', type=float, default=1e-6,
                         help='learning rate')
 
     parser.add_argument("--scale_lr", action="store_true",
@@ -80,7 +80,6 @@ def get_opts():
 
     parser.add_argument('--exp_name', type=str, default='exp',
                         help='experiment name')
-    
 
     # resume weights
     parser.add_argument('--resume_from_checkpoint', type=str, default=None,
@@ -89,10 +88,6 @@ def get_opts():
     # Stable-Diffusion weight
     parser.add_argument('--sd_path', type=str, default='/home/lolicon/workspace/stable-diffusion-webui/models/Stable-diffusion/CounterfeitV30_v30.safetensors',
                         help='the pretrained Stable-Diffusion weight path')
-
-    # ControlNet weight
-    parser.add_argument('--ctrl_path', type=str, default=None,
-                        help='the pretrained ControlNet weight path')
     
 
     # other arguments

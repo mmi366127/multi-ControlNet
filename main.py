@@ -43,6 +43,7 @@ def prepare_model(opts, config):
                 sd_control[model_name] = sd_ctrl
         
         model.load_multi_state_dict(sd_ckpt, **sd_control)
+        
 
     return model
 
@@ -86,18 +87,14 @@ def prepare_callbacks(opts, config, lightning_config, model, now):
             "dirpath": os.path.join(opts.root_dir, "checkpoints"),
             "filename": "{epoch:06}",
             "verbose": True,
-            "save_last": True,
+            "save_last": False,
         }
     }
-    if "modelcheckpoint" in lightning_config:
-        modelcheckpoint_cfg = lightning_config.modelcheckpoint
-    else:
-        modelcheckpoint_cfg = OmegaConf.create()
 
     if hasattr(model, "monitor"):
         print(f"Monitoring {model.monitor} as checkpoint metric.")
         default_modelckpt_cfg["params"]["monitor"] = model.monitor
-        default_modelckpt_cfg["params"]["save_top_k"] = 3
+        default_modelckpt_cfg["params"]["save_top_k"] = 2
 
     if "modelcheckpoint" in lightning_config:
         modelckpt_cfg = lightning_config.modelcheckpoint
